@@ -1,3 +1,4 @@
+import itertools
 import search
 import random
 import math
@@ -39,10 +40,9 @@ class OnePieceProblem(Problem):
         self.num_rows = len(self.map) # list of lists
         self.num_cols = len(self.map[0]) # list
         self.num_treasures = len(self.treasures)
-        self.num_pirate_ships = len(self.pirate_ships)
+        self.num_pirate_ships = len(initial['pirate_ships'])
         self.symbols_dict = self.symbols_to_dict() # has 'I' 'S' 'B' 'Adj' 'T' keys with corresponding positions on map
-        # Insert here a distance matrix (?)
-        # Insert here a list of the treasures locations (?)
+        
 
         #create initial and goal states
         initial = State(initial) 
@@ -219,17 +219,18 @@ class OnePieceProblem(Problem):
                             symbols_dict['Adj'].append((adj_row, adj_col))
 
         
-        for row, col in self.symbols_dict['T']: # specific treasure
+        for row, col in symbols_dict['T']: # specific treasure
 
             for adj_row, adj_col in [(row -1, col),(row , col -1),(row, col +1),(row+1, col)]: # all adj cells (even if not exists)
 
-                if 0<= adj_row < self.num_rows and 0<= adj_col < self.num_cols: #if the cell exists
+                if 0 <= adj_row < self.num_rows and 0<= adj_col < self.num_cols: #if the cell exists
 
-                    if (row,col) in self.symbols_dict['S']: #its a sea cell
+                    if (row,col) in symbols_dict['S']: #its a sea cell
 
-                        self.symbols_dict['RT'].append((row, col)) #only reachable treasures
+                        symbols_dict['RT'].append((row, col)) #only reachable treasures
 
         return symbols_dict
+       
             
 
 def create_onepiece_problem(game):
