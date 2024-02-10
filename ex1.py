@@ -159,7 +159,25 @@ class OnePieceProblem(Problem):
         """ This is the heuristic. It gets a node (not a state,
         state can be accessed via node.state)
         and returns a goal distance estimate"""
-        return 0
+        pass
+
+    """
+        def h_max(self, node):
+            Max of h_1 and h_2
+            return max(self.h_1(node), self.h_2(node))
+
+        def h_weighted_sum(self, node, alpha=0.5, beta=0.5):
+            Weighted sum of h_1 and h_2 with weights alpha and beta
+            return alpha * self.h_1(node) + beta * self.h_2(node)
+
+        def h_average(self, node):
+            Average of h_1 and h_2
+            return (self.h_1(node) + self.h_2(node)) / 2
+
+        def h_nonlinear(self, node):
+            Example non-linear combination: square root of the sum of squares
+            return (self.h_1(node)**2 + self.h_2(node)**2)**0.5
+    """
     
     def h_1(self, node): #done
         return self.num_treasures / self.num_pirate_ships
@@ -235,7 +253,7 @@ class State:
             self.num_treasures_left_to_collect = len(initial['treasures'])
 
             self.marine_ships_paths = initial['marine_ships']
-            self.marine_ships_positions = {marine_ship : path[0] for marine_ship, path in self.marine_ships_paths.items()}
+            self.marine_ships_positions = {marine_ship : (path[0],1) for marine_ship, path in self.marine_ships_paths.items()}
 
 
         def __deepcopy__(self, memo):
@@ -312,17 +330,19 @@ class State:
         def update_marine_ships(self): # update marine ships position in the patrol path
             for marine_ship, path in self.marine_ships_paths.items():
                 if len(path) == 1: continue # stationary marine ship (single position in its path) 
-                current_position = self.marine_ships_positions[marine_ship]
+                current_position, direction = self.marine_ships_positions[marine_ship] # (position, direction)
+     
                 if current_position in path:
                     current_position_index = path.index(current_position)
-                    direction = 1 if current_position_index < (len(path) - 1) else -1
+                    if (current_position_index == len(path)-1 and direction == 1) or (current_position_index == 0 and direction == -1):
+                        self.marine_ships_positions[marine_ship][1] = (-1)*direction
                 else:
                     print(f"Error: {marine_ship} is in an invalid position {current_position}\n")
                     print(f'Valid path is {path}')
                 self.marine_ships_positions[marine_ship] = path[current_position_index + direction]
 
         def update_crash(self, pirate_ship):
-            marine_ships_current_positions = self.marine_ships_positions.values() # [(),()....]
+            marine_ships_current_positions = [value[0] for value in self.marine_ships_positions.values()] # [(),()....]
             pirate_ship_position = self.pirate_ships_positions[pirate_ship]
             if pirate_ship_position in marine_ships_current_positions:
                 self.unload(pirate_ship)
