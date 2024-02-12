@@ -164,25 +164,29 @@ class OnePieceProblem(Problem):
         """ This is the heuristic. It gets a node (not a state,
         state can be accessed via node.state)
         and returns a goal distance estimate"""
+        
+        if self.goal_test(node.state): #goal aware
+            return 0
 
         def h_max(self, node):
             #Max of h_1 and h_2
-            return max(self.h_1(node), self.h_2(node))
+            return max(self.h_1(node), self.h_2(node), self.h_3(node), self.h_4(node))
 
-        def h_weighted_sum(self, node, alpha=0.3):
+        def h_weighted_sum(self, node, alpha=0.1, beta = 0.2, gamma = 0.2):
+            rest = 1- alpha - beta - gamma
             #Weighted sum of h_1 and h_2 with weights alpha and beta
-            return alpha * self.h_1(node) + (1-alpha) * self.h_2(node)
+            return alpha * self.h_1(node) + beta * self.h_2(node) + gamma * self.h_3(node) + rest * self.h_4(node)
 
         def h_average(self, node):
             #Average of h_1 and h_2
-            return (self.h_1(node) + self.h_2(node)) / 2
+            return (self.h_1(node) + self.h_2(node) + self.h_3(node) + self.h_4(node) ) / 4
 
         def h_nonlinear(self, node):
             #Non-linear combination
-            return (self.h_1(node)**2 + self.h_2(node)**2)**0.5
+            return (self.h_1(node)**2 + self.h_2(node)**2 + self.h_3(node)**2 + self.h_4(node)**2 )**0.5
         
         maximal_h = max(h_max(self, node), h_weighted_sum(self, node), h_average(self, node), h_nonlinear(self, node))
-
+        
         return maximal_h
     
     
@@ -200,7 +204,56 @@ class OnePieceProblem(Problem):
 
         return sum_dist / self.num_pirate_ships
 
-   
+    def h_3(self, node): # This heuristic evaluates the risk based on the proximity of pirate ships to marine ships. 
+        risk = 0
+        base_loc = self.symbols_dict['B'][0]
+        for pirate_ship, pirate_ship_position in node.state.pirate_ships_positions.items():
+            if pirate_ship_position == base_loc or node.state.pirate_ships_capacity[pirate_ship] == 0:
+                continue # huristically not at risk
+            
+            min_dist_to_marines = infinity
+            for _, marine_ship_position in node.state.marine_ships_positions.items():
+                marine_ship_position = marine_ship_position[0]
+                dist = manhattan_distance(pirate_ship_position, marine_ship_position)
+                if dist == 0:
+                    # print('dist == 0') # if this is printed theres a problem
+                    min_dist_to_marines = infinity
+                else:
+                    min_dist_to_marines = min(dist, min_dist_to_marines)
+
+            if min_dist_to_marines != infinity:
+                risk += 1/min_dist_to_marines
+        return risk
+    
+
+    # def h_4(self, node): # Calculates the weigted average distance of all pirate ships carrying treasures back to the base. very similar to h_2
+    #     weighted_distance = 0
+    #     total_treasures_amount = 0
+    #     base_position = self.symbols_dict['B'][0]
+    #     for pirate_ship, load in node.state.pirate_ships_load.items():
+    #         if load: # the pirate ship is carrying load
+    #             pirate_ship_position = node.state.pirate_ships_positions[pirate_ship]
+    #             distance = manhattan_distance(pirate_ship_position, base_position) 
+    #             weighted_distance += distance * len(load)
+    #             total_treasures_amount += len(load)
+    #     if total_treasures_amount==0:
+    #         return 0
+    #     return weighted_distance / total_treasures_amount
+
+
+    def h_4(self, node): # treasures left to collect
+        state = node.state
+        num_treasures_left_to_collect = state.num_treasures_left_to_collect
+        collected_treasures = [treasure_name for treasure_name, collected in  state.treasures_collected.items() if collected]
+        
+        treasures_closest_locs = self.closest_to_base(node.state)   # dict every tresure whats the minimal dist to base     
+        min_dist = min([smallest_dist for treasure, smallest_dist in treasures_closest_locs.items() if treasure not in collected_treasures]) # huristic dist to adj to tresure
+
+        return (min_dist * num_treasures_left_to_collect) / self.num_pirate_ships # relexed since i dont constrain a ship to be next to a treasure
+        # if it picks it and i completly dont take into account the marine ships existence. also i say that every uncollected treasure is
+        # at the same closest location to the base, and i spred the work accrose all ships
+          
+
     def closest_to_base(self, state): # return the closest location of the current treasure to the base
         base_loc = self.symbols_dict['B'][0] # base location
         treasures_closest_locs = {treasure_name : manhattan_distance(base_loc, treasure_island_loc) - 1 for treasure_name, treasure_island_loc in self.treasures.items()}
@@ -214,6 +267,7 @@ class OnePieceProblem(Problem):
                         treasures_closest_locs[treasure_name] = min(treasures_closest_locs[treasure_name] , l1_pirate_ship) # for each treasure, find the minimal (l1) from base
 
         return treasures_closest_locs
+ 
 
     """Feel free to add your own functions
     (-2, -2, None) means there was a timeout"""
