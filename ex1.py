@@ -6,6 +6,7 @@ from search import Problem
 from itertools import product
 import copy
 from utils import manhattan_distance, create_inverse_dict
+from collections import OrderedDict
 
 # TODO add all non static functions to utils file
 ids = ["318880754", "324079763"]
@@ -35,7 +36,7 @@ class OnePieceProblem(Problem):
         self.map = initial['map']
         #self.pirate_ships = initial['pirate_ships']
         self.treasures = initial['treasures']
-        self.inverse_treasures = create_inverse_dict(initial['pirate_ships'])
+        self.inverse_treasures = create_inverse_dict(initial['treasures'])
         self.marine_ships = initial['marine_ships']
         self.num_rows = len(self.map) # list of lists
         self.num_cols = len(self.map[0]) # list
@@ -43,7 +44,6 @@ class OnePieceProblem(Problem):
         self.num_pirate_ships = len(initial['pirate_ships'])
         self.symbols_dict = self.symbols_to_dict() # has 'I' 'S' 'B' 'Adj' 'T' keys with corresponding positions on map
         
-
         #create initial and goal states
         initial = State(initial) 
         search.Problem.__init__(self, initial)
@@ -54,13 +54,13 @@ class OnePieceProblem(Problem):
         as defined in the problem description file"""
         valid_actions = {}
 
-        for pirate_ship, location in state.pirate_ships.items():
+        for pirate_ship, location in state.pirate_ships_positions.items():
             valid_actions[pirate_ship] = {}
 
             valid_actions[pirate_ship]['sail'] = self.check_sail(pirate_ship, location)
             valid_actions[pirate_ship]['collect_treasure'] = self.check_collect_treasure(state, pirate_ship, location)
             valid_actions[pirate_ship]['deposit_treasure'] = self.check_deposit_treasure(state, pirate_ship, location)
-            valid_actions[pirate_ship]['wait'] = self.check_wait(state, pirate_ship)
+            valid_actions[pirate_ship]['wait'] = self.check_wait(pirate_ship)
 
         all_actions = []
         for pirate_ship, pirate_ship_dict in valid_actions.items():
@@ -93,13 +93,17 @@ class OnePieceProblem(Problem):
         return valid_actions
         
     def check_collect_treasure(self, state, pirate_ship, location):
-        # TODO: check inventory (pirate_ships_capacity)
         valid_action = list()
         pirate_ship_can_collect = state.pirate_ships_capacity[pirate_ship] != FULL # Boolean
         treasures_collected = state.treasures_collected
         
-        if pirate_ship_can_collect and (location in self.symbols_dict['Adj']):
-            treasures_names = self.inverse_treasures[location]
+        adjesent_treasure = False
+        for treasure_loc in self.symbols_dict['Adj']:
+            if location == treasure_loc[0]:
+                adjesent_treasure = treasure_loc[1]
+
+        if pirate_ship_can_collect and adjesent_treasure:
+            treasures_names = self.inverse_treasures[adjesent_treasure]
             for name in treasures_names:
                 if (treasures_collected[name]) or (name in state.pirate_ships_load[pirate_ship]): # treasure was already deposited 
                     continue
@@ -115,7 +119,8 @@ class OnePieceProblem(Problem):
         return valid_action
 
     def check_wait(self, pirate_ship):
-        valid_actions = list(('wait', pirate_ship))
+        valid_actions = [] 
+        valid_actions.append(('wait', pirate_ship))
         return valid_actions
 
 
@@ -145,7 +150,7 @@ class OnePieceProblem(Problem):
             else :
                 new_state.update_crash(pirate_ship)    
             
-        new_state.update_other()    
+        new_state.update_marine_ships()    
         return new_state
                 
     
@@ -159,38 +164,56 @@ class OnePieceProblem(Problem):
         """ This is the heuristic. It gets a node (not a state,
         state can be accessed via node.state)
         and returns a goal distance estimate"""
-        pass
 
-    """
         def h_max(self, node):
-            Max of h_1 and h_2
+            #Max of h_1 and h_2
             return max(self.h_1(node), self.h_2(node))
 
-        def h_weighted_sum(self, node, alpha=0.5, beta=0.5):
-            Weighted sum of h_1 and h_2 with weights alpha and beta
-            return alpha * self.h_1(node) + beta * self.h_2(node)
+        def h_weighted_sum(self, node, alpha=0.3):
+            #Weighted sum of h_1 and h_2 with weights alpha and beta
+            return alpha * self.h_1(node) + (1-alpha) * self.h_2(node)
 
         def h_average(self, node):
-            Average of h_1 and h_2
+            #Average of h_1 and h_2
             return (self.h_1(node) + self.h_2(node)) / 2
 
         def h_nonlinear(self, node):
-            Example non-linear combination: square root of the sum of squares
+            #Non-linear combination
             return (self.h_1(node)**2 + self.h_2(node)**2)**0.5
-    """
+        
+        maximal_h = max(h_max(self, node), h_weighted_sum(self, node), h_average(self, node), h_nonlinear(self, node))
+
+        return maximal_h
+    
     
     def h_1(self, node): #done
-        return self.num_treasures / self.num_pirate_ships
+        state = node.state
+        return state.num_treasures_left_to_collect / self.num_pirate_ships
 
     def h_2(self, node): #done
         # returns sum of dintances for the closest sea cell adjacent to a treasure for each treasure
         if len(self.symbols_dict['T']) - len(self.symbols_dict['RT']) != 0: #there exists an unreachable treasure
             return infinity
         
-        reachable_treasure_locs = self.symbols_dict['RT'] # 'RT' : [(i,j) for every position of an island with a treasure]
-        base_loc = self.symbols_dict['B'][0] # base location
-        sum_dist = sum([manhattan_distance(base_loc, treasure_loc) - 1 for treasure_loc in reachable_treasure_locs]) # huristic dist to adj to tresure
+        treasures_closest_locs = self.closest_to_base(node.state)        
+        sum_dist = sum([smallest_dist for smallest_dist in treasures_closest_locs.values()]) # huristic dist to adj to tresure
+
         return sum_dist / self.num_pirate_ships
+
+   
+    def closest_to_base(self, state): # return the closest location of the current treasure to the base
+        base_loc = self.symbols_dict['B'][0] # base location
+        treasures_closest_locs = {treasure_name : manhattan_distance(base_loc, treasure_island_loc) - 1 for treasure_name, treasure_island_loc in self.treasures.items()}
+
+        for treasure_name in treasures_closest_locs.keys():
+            for pirate_ship, pirate_ship_loc in state.pirate_ships_positions.items():
+                    if treasure_name not in state.pirate_ships_load[pirate_ship]:
+                        continue
+                    else:
+                        l1_pirate_ship = manhattan_distance(base_loc, pirate_ship_loc) - 1
+                        treasures_closest_locs[treasure_name] = min(treasures_closest_locs[treasure_name] , l1_pirate_ship) # for each treasure, find the minimal (l1) from base
+
+        return treasures_closest_locs
 
     """Feel free to add your own functions
     (-2, -2, None) means there was a timeout"""
@@ -216,7 +239,7 @@ class OnePieceProblem(Problem):
                     
                         if (adj_row,adj_col) in symbols_dict['S']: #its a sea cell
 
-                            symbols_dict['Adj'].append((adj_row, adj_col))
+                            symbols_dict['Adj'].append(((adj_row, adj_col), (row, col))) # (pirate_ship location, treasure_location)
 
         
         for row, col in symbols_dict['T']: # specific treasure
@@ -225,9 +248,11 @@ class OnePieceProblem(Problem):
 
                 if 0 <= adj_row < self.num_rows and 0<= adj_col < self.num_cols: #if the cell exists
 
-                    if (row,col) in symbols_dict['S']: #its a sea cell
+                    if (adj_row , adj_col) in symbols_dict['S']: #its a sea cell
 
-                        symbols_dict['RT'].append((row, col)) #only reachable treasures
+                        if (row, col) not in symbols_dict['RT']:
+                            symbols_dict['RT'].append((row, col)) #only reachable treasures
+                        
 
         return symbols_dict
        
@@ -242,9 +267,27 @@ def create_onepiece_problem(game):
 
 class State:
     # DONT FORGET TO MAKE IT HASHABLE
-        def __init__(self, initial): # state is pirate and marine ships current positions, #treasures left to collect and their positions, and the current capacity of the pirate ships
-            self.initial = initial # the fixed game
+    def __init__(self, initial): # state is pirate and marine ships current positions, #treasures left to collect and their positions, and the current capacity of the pirate ships
+        self.initial = initial
 
+        # Initialize pirate ships positions and capacities using OrderedDict
+        self.pirate_ships_positions = OrderedDict(initial['pirate_ships'])
+        self.pirate_ships_capacity = OrderedDict((pirate_ship, 0) for pirate_ship in self.pirate_ships_positions.keys())
+        self.pirate_ships_load = OrderedDict((pirate_ship, []) for pirate_ship in self.pirate_ships_positions.keys())
+
+        # Initialize treasures collected using OrderedDict
+        treasures = initial['treasures']
+        self.treasures_collected = OrderedDict((treasure, False) for treasure in treasures.keys())
+        self.num_treasures_left_to_collect = len(initial['treasures'])
+
+        # Initialize marine ships paths and positions using OrderedDict
+        self.marine_ships_paths = OrderedDict(initial['marine_ships'])
+        self.marine_ships_positions = OrderedDict((marine_ship, (path[0], 1)) for marine_ship, path in self.marine_ships_paths.items())
+
+        '''
+
+
+        old code - 
             self.pirate_ships_positions = initial['pirate_ships']
             self.pirate_ships_capacity = {pirate_ship : 0 for pirate_ship in self.pirate_ships_positions.keys()}
             self.pirate_ships_load = {pirate_ship : [] for pirate_ship in self.pirate_ships_positions.keys()}
@@ -255,103 +298,115 @@ class State:
 
             self.marine_ships_paths = initial['marine_ships']
             self.marine_ships_positions = {marine_ship : (path[0],1) for marine_ship, path in self.marine_ships_paths.items()}
+        '''
 
+    def __deepcopy__(self, memo):
+        new_initial = copy.deepcopy(self.initial, memo)
+        new_state = State(new_initial)
 
-        def __deepcopy__(self, memo):
-            new_initial = copy.deepcopy(self.initial, memo)
-            new_state = State(new_initial)
+        new_state.pirate_ships_positions = copy.deepcopy(self.pirate_ships_positions, memo)
+        new_state.pirate_ships_capacity = copy.deepcopy(self.pirate_ships_capacity, memo)
+        new_state.pirate_ships_load = copy.deepcopy(self.pirate_ships_load, memo)
 
-            new_state.pirate_ships_positions = copy.deepcopy(self.pirate_ships_positions, memo)
-            new_state.pirate_ships_capacity = copy.deepcopy(self.pirate_ships_capacity, memo)
-            new_state.pirate_ships_load = copy.deepcopy(self.pirate_ships_load, memo)
+        new_state.treasures_collected = copy.deepcopy(self.treasures_collected, memo)
+        new_state.num_treasures_left_to_collect = self.num_treasures_left_to_collect # deep copy ?
 
-            new_state.treasures_collected = copy.deepcopy(self.treasures_collected, memo)
-            new_state.num_treasures_left_to_collect = self.num_treasures_left_to_collect # deep copy ?
+        new_state.marine_ships_positions = copy.deepcopy(self.marine_ships_positions)
 
-            new_state.marine_ships_positions = copy.deepcopy(self.marine_ships_positions)
-
-            return new_state
-        
-        def __eq__(self, other): #define equality
-            if not isinstance(other, State):
-                return NotImplemented
-            
-            dict_attributes = [ # dictionary attributes of the class to be compared (whos relevant for state definition)
-            'pirate_ships_positions', 
-            'pirate_ships_capacity',
-            'pirate_ships_load',
-            'treasures_collected', 
-            'marine_ships_positions'
-            ]
+        return new_state
     
-            for attr in dict_attributes: # deeply compares the dictionaries
-                if getattr(self, attr, None) != getattr(other, attr, None):
-                    return False
+    def __eq__(self, other): #define equality
+        if not isinstance(other, State):
+            return NotImplemented
+        
+        dict_attributes = [ # dictionary attributes of the class to be compared (whos relevant for state definition)
+        'pirate_ships_positions', 
+        'pirate_ships_capacity',
+        'pirate_ships_load',
+        'treasures_collected', 
+        'marine_ships_positions'
+        ]
 
-            if self.num_treasures_left_to_collect !=  other.num_treasures_left_to_collect :
+        for attr in dict_attributes: # deeply compares the dictionaries
+            if getattr(self, attr, None) != getattr(other, attr, None):
                 return False
-            
-            return True
 
+        if self.num_treasures_left_to_collect !=  other.num_treasures_left_to_collect :
+            return False
         
-        def __hash__(self): # TODO: FINISH
-            '''
-            def __hash__(self):
-            # Example: Compute the hash based on immutable properties. This is a placeholder and may need adjustment.
-            # Be cautious as making instances hashable and using them as dictionary keys or in sets requires that
-            # instances are immutable for the hash to be consistent.
-            return hash((tuple(sorted(self.treasures.items())), tuple(sorted(self.marine_ships_positions.items())))) #its not good - just a chatgpy option
-            '''
-            # Compute a hash using hashable attributes
-            return hash((tuple(sorted(self.treasures_collected.items())), 
-                        tuple(sorted(self.pirate_ships_capacity.items())), 
-                        tuple(sorted(self.marine_ships_positions.items())),
-                        self.num_treasures_left_to_collect))
+        return True
+
+    def __lt__(self, other):
+        if not isinstance(other, State):
+            return NotImplemented
+
+        return self.num_treasures_left_to_collect < other.num_treasures_left_to_collect    
+
+
+    def __hash__(self): # TODO: FINISH
+        '''
+        def __hash__(self):
+        # Example: Compute the hash based on immutable properties. This is a placeholder and may need adjustment.
+        # Be cautious as making instances hashable and using them as dictionary keys or in sets requires that
+        # instances are immutable for the hash to be consistent.
+        return hash((tuple(sorted(self.treasures.items())), tuple(sorted(self.marine_ships_positions.items())))) #its not good - just a chatgpy option
+        '''
         
+        pirate_ships_positions_tuple = tuple(self.pirate_ships_positions.items())
+        pirate_ships_capacity_tuple = tuple(self.pirate_ships_capacity.items())
+        treasures_collected_tuple = tuple(self.treasures_collected.items())
+        marine_ships_positions_tuple = tuple(self.marine_ships_positions.items())
+        pirate_ships_load_tuple = tuple((pirate_ship, tuple(sorted(load))) for pirate_ship, load in self.pirate_ships_load.items())
+
+        return hash((pirate_ships_positions_tuple,
+                pirate_ships_capacity_tuple,
+                treasures_collected_tuple,
+                marine_ships_positions_tuple,
+                pirate_ships_load_tuple,
+                self.num_treasures_left_to_collect)) # TODO maybe also the marine ships current position
+
+    
+    def update_sail(self, pirate_ship, new_location): 
+        self.pirate_ships_positions[pirate_ship] = new_location
+        return
+
+    def update_collect_treasure(self, pirate_ship, treasure_name):
+        self.pirate_ships_capacity[pirate_ship] += 1 # im not changing treasures collected here as it is not sure that the ship would arrive safly to base
+        self.pirate_ships_load[pirate_ship].append(treasure_name)
+        return
+
+    def update_deposite_treasure(self, pirate_ship):
+        pirate_ship_load = self.pirate_ships_load[pirate_ship]
         
-        def update_sail(self, pirate_ship, new_location): 
-            self.pirate_ships_positions[pirate_ship] = new_location
-            return
+        for treasure_name in pirate_ship_load:
+            if not self.treasures_collected[treasure_name]: # it is the first time collecting this treasure
+                self.treasures_collected[treasure_name] = True
+                self.num_treasures_left_to_collect -=1
 
-        def update_collect_treasure(self, pirate_ship, treasure_name):
-            self.pirate_ships_capacity[pirate_ship] += 1 # im not changing treasures collected here as it is not sure that the ship would arrive safly to base
-            self.pirate_ships_load[pirate_ship].append(treasure_name)
-            return
+        self.unload(pirate_ship)
 
-        def update_deposite_treasure(self, pirate_ship):
-            pirate_ship_load = self.pirate_ships_load[pirate_ship]
-            
-            for treasure_name in pirate_ship_load:
-                if not self.treasures_collected[treasure_name]: # it is the first time collecting this treasure
-                    self.treasures_collected[treasure_name] = True
-                    self.num_treasures_left_to_collect -=1
+    def update_marine_ships(self): # update marine ships position in the patrol path
+        for marine_ship, path in self.marine_ships_paths.items():
+            if len(path) == 1: continue # stationary marine ship (single position in its path) 
+            current_position, direction = self.marine_ships_positions[marine_ship] # (position, direction)
+            current_position_index = None
+            if current_position in path:
+                current_position_index = path.index(current_position)
+                if (current_position_index == len(path)-1 and direction == 1) or (current_position_index == 0 and direction == -1):
+                    # self.marine_ships_positions[marine_ship][1] = (-1)*direction
+                    direction = (-1)*direction
+            else:
+                print(f"Error: {marine_ship} is in an invalid position {current_position}\n")
+                print(f'Valid path is {path}')
+            self.marine_ships_positions[marine_ship] = (path[current_position_index + direction], direction)
 
+    def update_crash(self, pirate_ship):
+        marine_ships_current_positions = [value[0] for value in self.marine_ships_positions.values()] # [(),()....]
+        pirate_ship_position = self.pirate_ships_positions[pirate_ship]
+        if pirate_ship_position in marine_ships_current_positions:
             self.unload(pirate_ship)
 
-        def update_marine_ships(self): # update marine ships position in the patrol path
-            for marine_ship, path in self.marine_ships_paths.items():
-                if len(path) == 1: continue # stationary marine ship (single position in its path) 
-                current_position, direction = self.marine_ships_positions[marine_ship] # (position, direction)
-     
-                if current_position in path:
-                    current_position_index = path.index(current_position)
-                    if (current_position_index == len(path)-1 and direction == 1) or (current_position_index == 0 and direction == -1):
-                        self.marine_ships_positions[marine_ship][1] = (-1)*direction
-                else:
-                    print(f"Error: {marine_ship} is in an invalid position {current_position}\n")
-                    print(f'Valid path is {path}')
-                self.marine_ships_positions[marine_ship] = path[current_position_index + direction]
-
-        def update_crash(self, pirate_ship):
-            marine_ships_current_positions = [value[0] for value in self.marine_ships_positions.values()] # [(),()....]
-            pirate_ship_position = self.pirate_ships_positions[pirate_ship]
-            if pirate_ship_position in marine_ships_current_positions:
-                self.unload(pirate_ship)
-
-        def unload(self, pirate_ship):
-            self.pirate_ships_capacity[pirate_ship] = 0
-            self.pirate_ships_load[pirate_ship] = []
-
-# TODO hash function
-# TODO h
-# TODO implement A*                        
+    def unload(self, pirate_ship):
+        self.pirate_ships_capacity[pirate_ship] = 0
+        self.pirate_ships_load[pirate_ship] = []
+                      
