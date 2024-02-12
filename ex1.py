@@ -172,7 +172,7 @@ class OnePieceProblem(Problem):
             #Max of h_1 and h_2
             return max(self.h_1(node), self.h_2(node), self.h_3(node), self.h_4(node))
 
-        def h_weighted_sum(self, node, alpha=0.1, beta = 0.2, gamma = 0.2):
+        def h_weighted_sum(self, node, alpha=0.1, beta = 0.2, gamma = 0.6):
             rest = 1- alpha - beta - gamma
             #Weighted sum of h_1 and h_2 with weights alpha and beta
             return alpha * self.h_1(node) + beta * self.h_2(node) + gamma * self.h_3(node) + rest * self.h_4(node)
