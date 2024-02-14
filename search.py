@@ -36,8 +36,8 @@ infinity = float('inf')
 
 """
 
-class Problem(object):
 
+class Problem(object):
     """The abstract class for a formal problem.  You should subclass
     this and implement the methods actions and result, and possibly
     __init__, goal_test, and path_cost. Then you will create instances
@@ -85,11 +85,12 @@ class Problem(object):
         """For optimization problems, each state has a value.  Hill-climbing
         and related algorithms try to maximize this value."""
         raise NotImplementedError
+
+
 # ______________________________________________________________________________
 
 
 class Node:
-
     """A node in a search tree. Contains a pointer to the parent (the node
     that this is a successor of) and to the actual state for this node. Note
     that if a state is arrived at by two paths, then there are two nodes with
@@ -105,24 +106,28 @@ class Node:
         self.parent = parent
         self.action = action
         self.path_cost = path_cost
-        self.depth = 0
-        if parent:
-            self.depth = parent.depth + 1
+        # self.depth = 0
+        # if parent:
+        #     self.depth = parent.depth + 1
 
     def __repr__(self):
         return "<Node {}>".format(self.state)
 
     def __lt__(self, node):
-        return self.state < node.state #?
+        return self.state < node.state  # ?
+
+    # def expand(self, problem):
+    #     """List the nodes reachable in one step from this node."""
+    #     return [self.child_node(problem, action)
+    #             for action in problem.actions(self.state)]
 
     def expand(self, problem):
-        """List the nodes reachable in one step from this node."""
-        return [self.child_node(problem, action)
-                for action in problem.actions(self.state)]
+        """List the nodes reachable in one step from this node using map."""
+        return list(map(lambda action: self.child_node(problem, action), problem.actions(self.state)))
 
     def child_node(self, problem, action):
         """[Figure 3.10]"""
-        next = problem.result(self.state, action) # this is a state
+        next = problem.result(self.state, action)  # this is a state
         return Node(next, self, action,
                     problem.path_cost(self.path_cost, self.state,
                                       action, next))
@@ -150,32 +155,65 @@ class Node:
     def __hash__(self):
         return hash(self.state)
 
+
 # ______________________________________________________________________________
 
+# def best_first_graph_search(problem, f):
+#     f = memoize(f, 'f')
+#     root_node = Node(problem.initial)
+#     if problem.goal_test(root_node.state):
+#         return root_node
+#     open = PriorityQueue(min, f)
+#     open.append(root_node)  # contains nodes
+#     closed = set()  # contains states
+#     distance = {root_node.state: 0}
+#     while open:
+#         min_node = open.pop()
+#         not_dicovered = (min_node.state not in closed)
+#         shorter_path = (min_node.path_cost < distance[min_node.state])
+#         if not_dicovered or shorter_path:
+#             if not_dicovered:
+#                 closed.add(min_node.state)
+#             distance[min_node.state] = min_node.path_cost
+#             if problem.goal_test(min_node.state):
+#                 return min_node
+#             for successor in min_node.expand(problem):
+#                 if f(successor) < infinity:
+#                     open.append(successor)
+#                     distance[successor.state] = successor.path_cost  # ?
+#     return None
+
+
 def best_first_graph_search(problem, f):
-    f = memoize(f, 'f')
+    f = memoize(f, 'f')  # Precompute f values for efficiency
     root_node = Node(problem.initial)
     if problem.goal_test(root_node.state):
         return root_node
-    open = PriorityQueue(min, f)
-    open.append(root_node) # contains nodes
-    closed = set() # contains states
-    distance = {root_node.state: 0}
-    while open:
-        min_node = open.pop()
-        not_dicovered = (min_node.state not in closed)
-        shorter_path = (min_node.path_cost < distance[min_node.state])
-        if not_dicovered or shorter_path:
-            if not_dicovered:
-                closed.add(min_node.state)
-            distance[min_node.state] = min_node.path_cost
-            if problem.goal_test(min_node.state):
-                return min_node
-            for successor in min_node.expand(problem):
-                if f(successor) < infinity: 
-                    open.append(successor)
-                    distance[successor.state] = successor.path_cost # ?
+
+    open_list = PriorityQueue(min, f)  # Renamed for clarity
+    open_list.append(root_node)
+    closed_set = set()  # States we have visited
+    distance = {root_node.state: 0}  # Tracks the best-known distance to each state
+
+    while open_list:
+        current_node = open_list.pop()  # Renamed for clarity
+
+        if current_node.state in closed_set and current_node.path_cost >= distance[current_node.state]:
+            continue  # Skip if we've found a better path already
+
+        closed_set.add(current_node.state)
+        distance[current_node.state] = current_node.path_cost
+
+        if problem.goal_test(current_node.state):
+            return current_node
+
+        for successor in current_node.expand(problem):
+            if successor.state not in distance or successor.path_cost < distance[successor.state]:
+                open_list.append(successor)
+                distance[successor.state] = successor.path_cost
+
     return None
+
 
 """
 def best_first_graph_search(problem, f):
@@ -207,6 +245,7 @@ def best_first_graph_search(problem, f):
                     open.insert(succsesor)
     return None
 """
+
 
 def astar_search(problem, h=None):
     """A* search is best-first graph search with f(n) = g(n)+h(n).
