@@ -1,7 +1,7 @@
 import ex1
 import search
 import time
-
+import statistics
 
 def timeout_exec(func, args=(), kwargs={}, timeout_duration=10, default=None):
     """This function will spawn a thread and run the given function
@@ -45,15 +45,17 @@ def check_problem(p, search_method, timeout):
     if isinstance(s, search.Node):
         solve = s
         solution = list(map(lambda n: n.action, solve.path()))[1:]
-        return (len(solution), t2 - t1, solution)
+        return len(solution), t2 - t1, solution
     elif s is None:
-        return (-2, -2, None)
+        return -2, -2, None
     else:
         return s
 
 
 def solve_problems(problems):
     solved = 0
+    mean_results = {}
+    runtime, steps = 0, 0
     for i, problem in enumerate(problems):
         print(f'\nproblem {i+1}')
         try:
@@ -62,13 +64,19 @@ def solve_problems(problems):
             print("Error creating problem: ", e)
             return None
         timeout = 60
-        result = check_problem(
-            p, (lambda p: search.astar_search(p, p.h)), timeout)
-        print("A* ", result)
-        if result[2] != None:
-            if result[0] != -3:
-                solved = solved + 1
+        for _ in range(50):
+            result = check_problem(
+                p, (lambda p: search.astar_search(p, p.h)), timeout)
+            # print("A* ", result)
+            if result[2] != None:
+                if result[0] != -3:
+                    solved = solved + 1
+            runtime += result[1]
+            steps += result[0]
 
+        mean_results[f'[problem_{i+1}'] = (steps/50, runtime/50)
+        runtime, steps = 0, 0
+    print(mean_results)
 
 def main():
     print(ex1.ids)
