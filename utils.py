@@ -747,7 +747,7 @@ class FIFOQueue(Queue):
         return item in self.queue
 
 
-class PriorityQueue(Queue):
+class PriorityQueue(Queue): #this one gets the function h
 
     """A queue in which the minimum (or maximum) element (as determined by f and
     order) is returned first. If order is min, the item with minimum f(x) is

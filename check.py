@@ -56,17 +56,19 @@ def solve_problems(problems):
     solved = 0
     mean_results = {}
     runtime, steps = 0, 0
+    num_rounds = 1
     for i, problem in enumerate(problems):
         print(f'\nproblem {i+1}')
         try:
-            p = ex1.create_onepiece_problem(problem)
+            p = ex1.create_onepiece_problem(problem) #####
         except Exception as e:
             print("Error creating problem: ", e)
             return None
         timeout = 60
-        for _ in range(50):
+        for _ in range(num_rounds):
             result = check_problem(
                 p, (lambda p: search.astar_search(p, p.h)), timeout)
+            print(p.counters)
             # print("A* ", result)
             if result[2] != None:
                 if result[0] != -3:
@@ -74,7 +76,7 @@ def solve_problems(problems):
             runtime += result[1]
             steps += result[0]
 
-        mean_results[f'[problem_{i+1}'] = (steps/50, runtime/50)
+        mean_results[f'[problem_{i+1}'] = (steps/num_rounds, runtime/num_rounds)
         runtime, steps = 0, 0
     print(mean_results)
 

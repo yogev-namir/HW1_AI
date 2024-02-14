@@ -1,12 +1,13 @@
 import copy
 import itertools
 import search
-import ujson
+#import ujson
 from collections import OrderedDict
 from itertools import product
 from search import Problem
 from utils import manhattan_distance, create_inverse_dict
-from deepdiff import DeepDiff
+#from deepdiff import DeepDiff
+import json
 
 # TODO add all non static functions to utils file
 ids = ["318880754", "324079763"]
@@ -47,8 +48,21 @@ class OnePieceProblem(Problem):
         self.symbols_dict = self.symbols_to_dict()  # has 'I' 'S' 'B' 'Adj' 'T' keys with corresponding positions on map
 
         # create initial and goal states
+        ###########
+        #initial = json.dumps(initial, indent = 3)
+        self.counters = {
+            'h_max': 0,
+            'h_weighted_sum': 0,
+            'h_average': 0,
+            'h_nonlinear': 0
+        }
+        ###########
+
+
         initial = State(initial)
         search.Problem.__init__(self, initial)
+
+        
 
     def actions(self, state):  # yogev
         """Returns all the actions that can be executed in the given
@@ -131,7 +145,7 @@ class OnePieceProblem(Problem):
         action in the given state. The action must be one of
         self.actions(state)."""
 
-        new_state = copy.deepcopy(state)  # check if it really deep copy it
+        new_state = copy.deepcopy(state)  # every time new deep copy
 
         for sub_action in action:
             pirate_ship = sub_action[1]
@@ -160,6 +174,7 @@ class OnePieceProblem(Problem):
          Returns True if it is, False otherwise."""
         return False if state.num_treasures_left_to_collect else True
 
+    '''
     def h(self, node):
         """ This is the heuristic. It gets a node (not a state,
         state can be accessed via node.state)
@@ -184,10 +199,63 @@ class OnePieceProblem(Problem):
         def h_nonlinear(self, node):
             # Non-linear combination
             return (self.h_1(node) ** 2 + self.h_2(node) ** 2 + self.h_3(node) ** 2 + self.h_4(node) ** 2) ** 0.5
+        
 
         maximal_h = max(h_max(self, node), h_weighted_sum(self, node), h_average(self, node), h_nonlinear(self, node))
 
         return maximal_h
+    
+
+    '''
+    def h(self, node):
+
+    
+
+    
+        """ This is the heuristic. It gets a node (not a state, state can be accessed via node.state)
+        and returns a goal distance estimate"""
+
+        if self.goal_test(node.state):  # goal aware
+            return 0
+
+        # Define heuristics
+        h_values = {
+            'h_max': self.h_max(node),
+            'h_weighted_sum': self.h_weighted_sum(node),
+            'h_average': self.h_average(node),
+            'h_nonlinear': self.h_nonlinear(node)
+        }
+
+        # Find the heuristic with the maximal value
+        maximal_h_name = max(h_values, key=h_values.get)
+        maximal_h_value = h_values[maximal_h_name]
+
+        # Increment the counter for the heuristic that provided the maximal value
+        self.counters[maximal_h_name] += 1
+
+        return maximal_h_value
+
+    def h_max(self, node):
+        #return max(self.h_1(node), self.h_2(node), self.h_3(node), self.h_4(node))
+        return 0
+
+    def h_weighted_sum(self, node, alpha=0.8, beta=0, gamma=0):
+        rest = 1 - alpha - beta - gamma
+        return alpha * self.h_1(node) + beta * self.h_2(node) + gamma * self.h_3(node) + rest * self.h_4(node)
+
+    def h_average(self, node):
+        return (self.h_1(node) + self.h_2(node) + self.h_3(node) + self.h_4(node)) / 4
+
+    def h_nonlinear(self, node):
+        #return (self.h_1(node) ** 2 + self.h_2(node) ** 2 + self.h_3(node) ** 2 + self.h_4(node) ** 2) ** 0.5
+        return 0
+
+    def display_usage(self):
+        for heuristic, count in self.counters.items():
+            print(f"{heuristic}: {count} times")
+
+
+
 
     def h_1(self, node):  # done
         state = node.state
@@ -198,7 +266,7 @@ class OnePieceProblem(Problem):
         if len(self.symbols_dict['T']) - len(self.symbols_dict['RT']) != 0:  # there exists an unreachable treasure
             return infinity
 
-        treasures_closest_locs = self.closest_to_base(node.state)
+        treasures_closest_locs = self.closest_to_base(node.state) 
         sum_dist = sum(
             [smallest_dist for smallest_dist in treasures_closest_locs.values()])  # huristic dist to adj to tresure
 
@@ -320,9 +388,8 @@ def create_onepiece_problem(game):
     The following methods are general methods and not related directly to the class OnePieceProblem
 """
 
-
+# what i would give them as inital ? json ? yes now its a json
 class State:
-    # DONT FORGET TO MAKE IT HASHABLE
     def __init__(self, initial):  # state is pirate and marine ships current positions,
         # treasures left to collect and their positions, and the current capacity of the pirate ships
         self.initial = initial
@@ -341,6 +408,8 @@ class State:
         self.marine_ships_paths = OrderedDict(initial['marine_ships'])
         self.marine_ships_positions = OrderedDict(
             (marine_ship, (path[0], 1)) for marine_ship, path in self.marine_ships_paths.items())
+        
+
 
         '''
         old code - 
@@ -355,10 +424,11 @@ class State:
             self.marine_ships_paths = initial['marine_ships']
             self.marine_ships_positions = {marine_ship : (path[0],1) for marine_ship, path in self.marine_ships_paths.items()}
         '''
-
+        '''
     def __deepcopy__(self, memo):
         new_initial = copy.deepcopy(self.initial, memo)
-        new_state = State(new_initial)
+        #new_state = State(new_initial)
+        new_state = State(self.initial)
 
         new_state.pirate_ships_positions = copy.deepcopy(self.pirate_ships_positions, memo)
         new_state.pirate_ships_capacity = copy.deepcopy(self.pirate_ships_capacity, memo)
@@ -370,6 +440,7 @@ class State:
         new_state.marine_ships_positions = copy.deepcopy(self.marine_ships_positions)
 
         return new_state
+    '''
 
     def __eq__(self, other):  # define equality
         if not isinstance(other, State):

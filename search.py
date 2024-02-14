@@ -123,11 +123,11 @@ class Node:
 
     def expand(self, problem):
         """List the nodes reachable in one step from this node using map."""
-        return list(map(lambda action: self.child_node(problem, action), problem.actions(self.state)))
+        return list(map(lambda action: self.child_node(problem, action), problem.actions(self.state))) ############### here i get all the succesor nodes (creating all of them a state)
 
-    def child_node(self, problem, action):
+    def child_node(self, problem, action): ############ here i use result that (that would create a result state for each state possible )
         """[Figure 3.10]"""
-        next = problem.result(self.state, action)  # this is a state
+        next = problem.result(self.state, action)  # this is a state, this state should be a jason!
         return Node(next, self, action,
                     problem.path_cost(self.path_cost, self.state,
                                       action, next))
@@ -183,7 +183,7 @@ class Node:
 #                     distance[successor.state] = successor.path_cost  # ?
 #     return None
 
-
+'''
 def best_first_graph_search(problem, f):
     f = memoize(f, 'f')  # Precompute f values for efficiency
     root_node = Node(problem.initial)
@@ -212,7 +212,64 @@ def best_first_graph_search(problem, f):
                 open_list.append(successor)
                 distance[successor.state] = successor.path_cost
 
+    return None'''
+
+
+import time
+
+def best_first_graph_search(problem, f):
+    start_time = time.time()  # Start timing
+
+    f = memoize(f, 'f')  # Precompute f values for efficiency
+    root_node = Node(problem.initial)
+
+    init_time = time.time()  # Check time after initialization
+
+    if problem.goal_test(root_node.state):
+        return root_node
+
+    open_list = PriorityQueue(min, f)  # Renamed for clarity
+    open_list.append(root_node)
+    closed_set = set()  # States we have visited
+    distance = {root_node.state: 0}  # Tracks the best-known distance to each state
+
+    setup_time = time.time()  # Check time after setup
+
+    loop_start_time = time.time()  # Start timing the loop
+
+    while open_list:
+        current_node = open_list.pop()  # now it is the next iteration!!! and i got all the new nodes 
+        # here i create a state out of the jason!!!! state = State(jason) #which is realy initial. mabey i need to copy the shape of initial and that would be my state
+
+        
+        if current_node.state in closed_set and current_node.path_cost >= distance[current_node.state]:
+            continue  # Skip if we've found a better path already
+
+        closed_set.add(current_node.state) 
+        distance[current_node.state] = current_node.path_cost
+
+        if problem.goal_test(current_node.state):
+            return current_node
+        
+
+        # we will produce node node and than insert the node into the open_list so the h is calculated for it and it is inserted into the queue with the right h and than
+        # the next noide would be created and use the same memmoey (they share state, and we would always hols the trouth value so that the node would know whats was the state initialy)
+
+        for successor in current_node.expand(problem): ##############expend now i go for each successor
+            if successor.state not in distance or successor.path_cost < distance[successor.state]:
+                open_list.append(successor) ######### i put all the new nodes in the open list - need a check
+                distance[successor.state] = successor.path_cost
+
+    loop_end_time = time.time()  # End timing the loop
+    print(f"Loop iteration time: {loop_end_time - loop_start_time}")
+
+    end_time = time.time()  # End timing
+    print(f"Initialization time: {init_time - start_time}")
+    print(f"Setup time: {setup_time - init_time}")
+    print(f"Total time: {end_time - start_time}")
+
     return None
+
 
 
 """
@@ -260,4 +317,5 @@ def astar_search(problem, h=None):
 
     # TODO: Implement the rest of the A* search algorithm
 
-    return best_first_graph_search(problem, lambda node: node.path_cost + h(node))
+    return best_first_graph_search(problem, lambda node: node.path_cost + h(node)) ########## heres f !!! and i calculate h on the node when it already exists.. do i calculate all of the h together ?
+
