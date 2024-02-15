@@ -4,7 +4,6 @@ import search
 from collections import OrderedDict
 from itertools import product
 from search import Problem
-from utils import manhattan_distance, create_inverse_dict
 
 # TODO add all non static functions to utils file
 ids = ["318880754", "324079763"]
@@ -239,7 +238,7 @@ class OnePieceProblem(Problem):
                         treasure not in collected_treasures])  # heuristic dist to adj to treasure
 
         return (
-                    min_dist * num_treasures_left_to_collect) / self.num_pirate_ships  # relexed since i dont constrain a ship to be next to a treasure
+                min_dist * num_treasures_left_to_collect) / self.num_pirate_ships  # relexed since i dont constrain a ship to be next to a treasure
         # if it picks it and i completly dont take into account the marine ships existence. also i say that every uncollected treasure is
         # at the same closest location to the base, and i spred the work accrose all ships
 
@@ -306,6 +305,8 @@ def create_onepiece_problem(game):
 """
     The following methods are general methods and not related directly to the class OnePieceProblem
 """
+
+
 # what i would give them as inital ? json ? yes now its a json
 class State:
     def __init__(self, initial):  # state is pirate and marine ships current positions,
@@ -421,3 +422,20 @@ class State:
     def unload(self, pirate_ship):
         self.pirate_ships_capacity[pirate_ship] = 0
         self.pirate_ships_load[pirate_ship] = []
+
+
+# Costume utils functions
+# ______________________________________________________________________________
+# Functions that we have created :)
+def manhattan_distance(location_1, location_2):  # done
+    return abs(location_1[0] - location_2[0]) + abs(location_1[1] - location_2[1])
+
+
+def create_inverse_dict(original_dict):  # done
+    new_dict = {}
+    for key, value in original_dict.items():
+        if value not in new_dict:
+            new_dict[value] = [key]
+        else:
+            new_dict[value].append(key)
+    return new_dict

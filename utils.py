@@ -10,20 +10,7 @@ import math
 import functools
 from itertools import chain, combinations
 
-# ______________________________________________________________________________
-# Functions that we have created :)
-def manhattan_distance(location_1, location_2): #done
-        return abs(location_1[0] - location_2[0]) + abs(location_1[1] - location_2[1])
 
-
-def create_inverse_dict(original_dict): #done
-    new_dict = {}
-    for key, value in original_dict.items():
-        if value not in new_dict:
-            new_dict[value] = [key]
-        else:
-            new_dict[value].append(key)
-    return new_dict    
 # ______________________________________________________________________________
 # Functions on Sequences and Iterables
 
