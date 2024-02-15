@@ -15,27 +15,11 @@ import math
 import random
 import sys
 import bisect
+import time
 
 infinity = float('inf')
 
 # ______________________________________________________________________________
-
-
-"""
-{
-            "map": [
-                ['S', 'S', 'I', 'S'],
-                ['S', 'S', 'S', 'S'],
-                ['B', 'S', 'S', 'S'],
-                ['S', 'S', 'S', 'S']
-            ],
-            "pirate_ships": {"pirate_ship_1": (2, 0)},
-            "treasures": {'treasure_1': (0, 2)},
-            "marine_ships": {'marine_1': [(1, 1), (1, 2), (2, 2), (2, 1)]}
-        },
-
-"""
-
 
 class Problem(object):
     """The abstract class for a formal problem.  You should subclass
@@ -116,16 +100,11 @@ class Node:
     def __lt__(self, node):
         return self.state < node.state  # ?
 
-    # def expand(self, problem):
-    #     """List the nodes reachable in one step from this node."""
-    #     return [self.child_node(problem, action)
-    #             for action in problem.actions(self.state)]
-
     def expand(self, problem):
         """List the nodes reachable in one step from this node using map."""
-        return list(map(lambda action: self.child_node(problem, action), problem.actions(self.state))) ############### here i get all the succesor nodes (creating all of them a state)
+        return list(map(lambda action: self.child_node(problem, action), problem.actions(self.state))) # here i get all the succesor nodes (creating all of them a state)
 
-    def child_node(self, problem, action): ############ here i use result that (that would create a result state for each state possible )
+    def child_node(self, problem, action): # here i use result that (that would create a result state for each state possible )
         """[Figure 3.10]"""
         next = problem.result(self.state, action)  # this is a state, this state should be a jason!
         return Node(next, self, action,
@@ -157,66 +136,6 @@ class Node:
 
 
 # ______________________________________________________________________________
-
-# def best_first_graph_search(problem, f):
-#     f = memoize(f, 'f')
-#     root_node = Node(problem.initial)
-#     if problem.goal_test(root_node.state):
-#         return root_node
-#     open = PriorityQueue(min, f)
-#     open.append(root_node)  # contains nodes
-#     closed = set()  # contains states
-#     distance = {root_node.state: 0}
-#     while open:
-#         min_node = open.pop()
-#         not_dicovered = (min_node.state not in closed)
-#         shorter_path = (min_node.path_cost < distance[min_node.state])
-#         if not_dicovered or shorter_path:
-#             if not_dicovered:
-#                 closed.add(min_node.state)
-#             distance[min_node.state] = min_node.path_cost
-#             if problem.goal_test(min_node.state):
-#                 return min_node
-#             for successor in min_node.expand(problem):
-#                 if f(successor) < infinity:
-#                     open.append(successor)
-#                     distance[successor.state] = successor.path_cost  # ?
-#     return None
-
-'''
-def best_first_graph_search(problem, f):
-    f = memoize(f, 'f')  # Precompute f values for efficiency
-    root_node = Node(problem.initial)
-    if problem.goal_test(root_node.state):
-        return root_node
-
-    open_list = PriorityQueue(min, f)  # Renamed for clarity
-    open_list.append(root_node)
-    closed_set = set()  # States we have visited
-    distance = {root_node.state: 0}  # Tracks the best-known distance to each state
-
-    while open_list:
-        current_node = open_list.pop()  # Renamed for clarity
-
-        if current_node.state in closed_set and current_node.path_cost >= distance[current_node.state]:
-            continue  # Skip if we've found a better path already
-
-        closed_set.add(current_node.state)
-        distance[current_node.state] = current_node.path_cost
-
-        if problem.goal_test(current_node.state):
-            return current_node
-
-        for successor in current_node.expand(problem):
-            if successor.state not in distance or successor.path_cost < distance[successor.state]:
-                open_list.append(successor)
-                distance[successor.state] = successor.path_cost
-
-    return None'''
-
-
-import time
-
 def best_first_graph_search(problem, f):
     start_time = time.time()  # Start timing
 
