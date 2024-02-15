@@ -1,32 +1,15 @@
 import copy
 import itertools
 import search
-#import ujson
 from collections import OrderedDict
 from itertools import product
 from search import Problem
 from utils import manhattan_distance, create_inverse_dict
-#from deepdiff import DeepDiff
-import json
 
 # TODO add all non static functions to utils file
 ids = ["318880754", "324079763"]
 infinity = float('inf')
 FULL = 2
-"""
-        {
-            "map": [
-                ['S', 'S', 'I', 'S'],
-                ['S', 'S', 'S', 'S'],
-                ['B', 'S', 'S', 'S'],
-                ['S', 'S', 'S', 'S']
-            ],
-            "pirate_ships": {"pirate_ship_1": (2, 0)},
-            "treasures": {'treasure_1': (0, 2)},
-            "marine_ships": {'marine_1': [(1, 1), (1, 2), (2, 2), (2, 1)]}
-        },
-
-"""
 
 
 class OnePieceProblem(Problem):
@@ -49,7 +32,7 @@ class OnePieceProblem(Problem):
 
         # create initial and goal states
         ###########
-        #initial = json.dumps(initial, indent = 3)
+        # initial = json.dumps(initial, indent = 3)
         self.counters = {
             'h_max': 0,
             'h_weighted_sum': 0,
@@ -58,11 +41,8 @@ class OnePieceProblem(Problem):
         }
         ###########
 
-
         initial = State(initial)
         search.Problem.__init__(self, initial)
-
-        
 
     def actions(self, state):  # yogev
         """Returns all the actions that can be executed in the given
@@ -87,11 +67,6 @@ class OnePieceProblem(Problem):
             all_actions.append(pirate_ship_actions)
         all_actions_tuples = list(product(*all_actions))
         return all_actions_tuples
-
-        '''
-        all_actions = tuple(itertools.product(*list(possible_actions.values()))) # ((),(),())
-        all_actions = self.eliminate_not_valid_actions(all_actions, state)   
-        '''
 
     def check_sail(self, pirate_ship, location):
         row, col = location
@@ -174,44 +149,7 @@ class OnePieceProblem(Problem):
          Returns True if it is, False otherwise."""
         return False if state.num_treasures_left_to_collect else True
 
-    '''
     def h(self, node):
-        """ This is the heuristic. It gets a node (not a state,
-        state can be accessed via node.state)
-        and returns a goal distance estimate"""
-
-        if self.goal_test(node.state):  # goal aware
-            return 0
-
-        def h_max(self, node):
-            # Max of h_1 and h_2
-            return max(self.h_1(node), self.h_2(node), self.h_3(node), self.h_4(node))
-
-        def h_weighted_sum(self, node, alpha=0.1, beta=0.2, gamma=0):
-            rest = 1 - alpha - beta - gamma
-            # Weighted sum of h_1 and h_2 with weights alpha and beta
-            return alpha * self.h_1(node) + beta * self.h_2(node) + gamma * self.h_3(node) + rest * self.h_4(node)
-
-        def h_average(self, node):
-            # Average of h_1 and h_2
-            return (self.h_1(node) + self.h_2(node) + self.h_3(node) + self.h_4(node)) / 4
-
-        def h_nonlinear(self, node):
-            # Non-linear combination
-            return (self.h_1(node) ** 2 + self.h_2(node) ** 2 + self.h_3(node) ** 2 + self.h_4(node) ** 2) ** 0.5
-        
-
-        maximal_h = max(h_max(self, node), h_weighted_sum(self, node), h_average(self, node), h_nonlinear(self, node))
-
-        return maximal_h
-    
-
-    '''
-    def h(self, node):
-
-    
-
-    
         """ This is the heuristic. It gets a node (not a state, state can be accessed via node.state)
         and returns a goal distance estimate"""
 
@@ -236,7 +174,7 @@ class OnePieceProblem(Problem):
         return maximal_h_value
 
     def h_max(self, node):
-        #return max(self.h_1(node), self.h_2(node), self.h_3(node), self.h_4(node))
+        # return max(self.h_1(node), self.h_2(node), self.h_3(node), self.h_4(node))
         return 0
 
     def h_weighted_sum(self, node, alpha=0.8, beta=0, gamma=0):
@@ -247,15 +185,12 @@ class OnePieceProblem(Problem):
         return (self.h_1(node) + self.h_2(node) + self.h_3(node) + self.h_4(node)) / 4
 
     def h_nonlinear(self, node):
-        #return (self.h_1(node) ** 2 + self.h_2(node) ** 2 + self.h_3(node) ** 2 + self.h_4(node) ** 2) ** 0.5
+        # return (self.h_1(node) ** 2 + self.h_2(node) ** 2 + self.h_3(node) ** 2 + self.h_4(node) ** 2) ** 0.5
         return 0
 
     def display_usage(self):
         for heuristic, count in self.counters.items():
             print(f"{heuristic}: {count} times")
-
-
-
 
     def h_1(self, node):  # done
         state = node.state
@@ -266,7 +201,7 @@ class OnePieceProblem(Problem):
         if len(self.symbols_dict['T']) - len(self.symbols_dict['RT']) != 0:  # there exists an unreachable treasure
             return infinity
 
-        treasures_closest_locs = self.closest_to_base(node.state) 
+        treasures_closest_locs = self.closest_to_base(node.state)
         sum_dist = sum(
             [smallest_dist for smallest_dist in treasures_closest_locs.values()])  # huristic dist to adj to tresure
 
@@ -293,20 +228,6 @@ class OnePieceProblem(Problem):
                 risk += 1 / min_dist_to_marines
         return risk
 
-    # def h_4(self, node): # Calculates the weigted average distance of all pirate ships carrying treasures back to the base. very similar to h_2
-    #     weighted_distance = 0
-    #     total_treasures_amount = 0
-    #     base_position = self.symbols_dict['B'][0]
-    #     for pirate_ship, load in node.state.pirate_ships_load.items():
-    #         if load: # the pirate ship is carrying load
-    #             pirate_ship_position = node.state.pirate_ships_positions[pirate_ship]
-    #             distance = manhattan_distance(pirate_ship_position, base_position) 
-    #             weighted_distance += distance * len(load)
-    #             total_treasures_amount += len(load)
-    #     if total_treasures_amount==0:
-    #         return 0
-    #     return weighted_distance / total_treasures_amount
-
     def h_4(self, node):  # treasures left to collect
         state = node.state
         num_treasures_left_to_collect = state.num_treasures_left_to_collect
@@ -317,7 +238,8 @@ class OnePieceProblem(Problem):
         min_dist = min([smallest_dist for treasure, smallest_dist in treasures_closest_locs.items() if
                         treasure not in collected_treasures])  # heuristic dist to adj to treasure
 
-        return (min_dist * num_treasures_left_to_collect) / self.num_pirate_ships  # relexed since i dont constrain a ship to be next to a treasure
+        return (
+                    min_dist * num_treasures_left_to_collect) / self.num_pirate_ships  # relexed since i dont constrain a ship to be next to a treasure
         # if it picks it and i completly dont take into account the marine ships existence. also i say that every uncollected treasure is
         # at the same closest location to the base, and i spred the work accrose all ships
 
@@ -352,7 +274,6 @@ class OnePieceProblem(Problem):
         symbols_dict['T'] = [treasure_loc for treasure_name, treasure_loc in self.treasures.items()]
 
         for row, col in symbols_dict['I']:  # for every 'T' position (i,j) when counting each adj cell once
-
             if (row, col) in symbols_dict['T']:  # only if this island has a treasure
 
                 for adj_row, adj_col in [(row - 1, col), (row, col - 1), (row, col + 1),
@@ -366,7 +287,6 @@ class OnePieceProblem(Problem):
                                 ((adj_row, adj_col), (row, col)))  # (pirate_ship location, treasure_location)
 
         for row, col in symbols_dict['T']:  # specific treasure
-
             for adj_row, adj_col in [(row - 1, col), (row, col - 1), (row, col + 1),
                                      (row + 1, col)]:  # all adj cells (even if not exists)
 
@@ -376,7 +296,6 @@ class OnePieceProblem(Problem):
 
                         if (row, col) not in symbols_dict['RT']:
                             symbols_dict['RT'].append((row, col))  # only reachable treasures
-
         return symbols_dict
 
 
@@ -387,7 +306,6 @@ def create_onepiece_problem(game):
 """
     The following methods are general methods and not related directly to the class OnePieceProblem
 """
-
 # what i would give them as inital ? json ? yes now its a json
 class State:
     def __init__(self, initial):  # state is pirate and marine ships current positions,
@@ -408,39 +326,6 @@ class State:
         self.marine_ships_paths = OrderedDict(initial['marine_ships'])
         self.marine_ships_positions = OrderedDict(
             (marine_ship, (path[0], 1)) for marine_ship, path in self.marine_ships_paths.items())
-        
-
-
-        '''
-        old code - 
-            self.pirate_ships_positions = initial['pirate_ships']
-            self.pirate_ships_capacity = {pirate_ship : 0 for pirate_ship in self.pirate_ships_positions.keys()}
-            self.pirate_ships_load = {pirate_ship : [] for pirate_ship in self.pirate_ships_positions.keys()}
-
-            treasures = initial['treasures']
-            self.treasures_collected = {treasure : False for treasure in treasures.keys()}
-            self.num_treasures_left_to_collect = len(initial['treasures'])
-
-            self.marine_ships_paths = initial['marine_ships']
-            self.marine_ships_positions = {marine_ship : (path[0],1) for marine_ship, path in self.marine_ships_paths.items()}
-        '''
-        '''
-    def __deepcopy__(self, memo):
-        new_initial = copy.deepcopy(self.initial, memo)
-        #new_state = State(new_initial)
-        new_state = State(self.initial)
-
-        new_state.pirate_ships_positions = copy.deepcopy(self.pirate_ships_positions, memo)
-        new_state.pirate_ships_capacity = copy.deepcopy(self.pirate_ships_capacity, memo)
-        new_state.pirate_ships_load = copy.deepcopy(self.pirate_ships_load, memo)
-
-        new_state.treasures_collected = copy.deepcopy(self.treasures_collected, memo)
-        new_state.num_treasures_left_to_collect = self.num_treasures_left_to_collect  # deep copy ?
-
-        new_state.marine_ships_positions = copy.deepcopy(self.marine_ships_positions)
-
-        return new_state
-    '''
 
     def __eq__(self, other):  # define equality
         if not isinstance(other, State):
@@ -521,7 +406,6 @@ class State:
                 current_position_index = path.index(current_position)
                 if (current_position_index == len(path) - 1 and direction == 1) or (
                         current_position_index == 0 and direction == -1):
-                    # self.marine_ships_positions[marine_ship][1] = (-1)*direction
                     direction = (-1) * direction
             else:
                 print(f"Error: {marine_ship} is in an invalid position {current_position}\n")
